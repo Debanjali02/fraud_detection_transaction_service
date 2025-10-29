@@ -17,22 +17,17 @@ public class NotificationServiceProducer {
     private final KafkaTemplate<String, NotificationResponse> kafkaNotificationProducerTemplate;
 
     @Async
-    public void send(String topic, String key, NotificationResponse message){
-        try{
-         kafkaNotificationProducerTemplate.send(topic, key, message).whenComplete(
-                 ((result, exception)->{
-                     if(exception==null){
-                         System.out.println("Successfully sent message");
-                     }
-                     else{
-                         System.out.println("Unable to send event message: "+message);
-                     }
-                 })
-         );
-        }
-        catch(Exception e){
-            System.out.println("Exception occured while sending message: "+e);
+    public void send(String topic, String key, NotificationResponse message) {
+        try {
+            kafkaNotificationProducerTemplate.send(topic, key, message).whenComplete((result, exception) -> {
+                if (exception == null) {
+                    System.out.println("Kafka message sent successfully: " + message);
+                } else {
+                    System.out.println("Failed to send message: " + exception.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            System.out.println("Exception occurred while sending message: " + e.getMessage());
         }
     }
-
 }

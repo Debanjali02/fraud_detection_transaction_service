@@ -49,8 +49,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     private String userAccountUrl = "http://localhost:8080/api/account/";
 
-//    @Value("${kafka.transaction.topic}")
-//    private String topic;
+     @Value("${kafka.transaction.topic}")
+     private String topic;
 
     @Override
     public void processTransaction(Long userId, TransactionRequest transactionRequest) throws Exception {
@@ -78,16 +78,17 @@ public class TransactionServiceImpl implements TransactionService {
 
                         throw new Exception("No receiver account possible in DEPOSIT!");
                     }
-                   //FraudResponse fraudResponse = makeRestCallToFraud(transactionRequest);
+                   FraudResponse fraudResponse = makeRestCallToFraud(transactionRequest);
 
-//                    if (Objects.equals(fraudResponse.getStatus(), Constants.VALID)
-//                            || Objects.equals(fraudResponse.getStatus(), Constants.ALERT) ) {
-//
-//                        //notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.SUCCESSFUL));
-//                    } else {
-//                        //notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
-//                       // throw new Exception("Transaction FAILED!!!");
-//                    }
+                    if (Objects.equals(fraudResponse.getStatus(), Constants.VALID)
+                            || Objects.equals(fraudResponse.getStatus(), Constants.ALERT) ) {
+
+                        notificationServiceProducer.send(topic, String.valueOf(userId),
+                                getNotificationResponse(userId, Constants.SUCCESSFUL));
+                    } else {
+                        notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
+                        throw new Exception("Transaction FAILED!!!");
+                    }
                     if (accountsDepositOptional.isPresent()) {
                         Accounts accounts = accountsDepositOptional.get();
                         accounts.setBalance(accounts.getBalance() + transactionRequest.getAmount());
@@ -106,23 +107,23 @@ public class TransactionServiceImpl implements TransactionService {
                     if (senderOptional.isPresent() && receiverOptional.isPresent()) {
                         Accounts senderAccount = senderOptional.get();
                         Accounts receiverAccount = receiverOptional.get();
-//                         FraudResponse fraudResponse1 = makeRestCallToFraud(transactionRequest);
-//                        if (Objects.equals(fraudResponse1.getStatus(), Constants.VALID)
-//                                || Objects.equals(fraudResponse1.getStatus(), Constants.ALERT)  ) {
-//                           // notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.SUCCESSFUL));
-//                        } else {
-//                           // notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
-//                           // throw new Exception("Transaction FAILED!!!");
-//                        }
+                         FraudResponse fraudResponse1 = makeRestCallToFraud(transactionRequest);
+                        if (Objects.equals(fraudResponse1.getStatus(), Constants.VALID)
+                                || Objects.equals(fraudResponse1.getStatus(), Constants.ALERT)  ) {
+                           notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.SUCCESSFUL));
+                        } else {
+                           notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
+                           throw new Exception("Transaction FAILED!!!");
+                        }
                         if (checkBalance(senderAccount.getBalance(), transactionRequest.getAmount())) {
                             senderAccount.setBalance(senderAccount.getBalance() - transactionRequest.getAmount());
                             receiverAccount.setBalance(receiverAccount.getBalance() + transactionRequest.getAmount());
                         } else {
-                            //notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
-                            //throw new Exception("Transfer not possible with this amount!!");
+                            notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
+                            throw new Exception("Transfer not possible with this amount!!");
                         }
                         saveTransaction(userId, transactionRequest);
-                        //notificationServiceProducer.send(topic, "key", getNotificationResponse(userId, Constants.SUCCESSFUL));
+                        notificationServiceProducer.send(topic, "key", getNotificationResponse(userId, Constants.SUCCESSFUL));
                         accountsRepository.save(senderAccount);
                         accountsRepository.save(receiverAccount);
                     }
@@ -140,22 +141,22 @@ public class TransactionServiceImpl implements TransactionService {
                     }
                     if (accountsWithdrawalOptional.isPresent()) {
                         Accounts accounts = accountsWithdrawalOptional.get();
-//                        FraudResponse fraudResponse2 = makeRestCallToFraud(transactionRequest);
-//
-//                        if (Objects.equals(fraudResponse2.getStatus(), Constants.VALID)
-//                                || Objects.equals(fraudResponse2.getStatus(), Constants.ALERT) ) {
-//                            //notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.SUCCESSFUL));
-//                        } else {
-//                           // notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
-//                            //throw new Exception("Transaction FAILED!!!");
-//                        }
+                        FraudResponse fraudResponse2 = makeRestCallToFraud(transactionRequest);
+
+                        if (Objects.equals(fraudResponse2.getStatus(), Constants.VALID)
+                                || Objects.equals(fraudResponse2.getStatus(), Constants.ALERT) ) {
+                            notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.SUCCESSFUL));
+                        } else {
+                           notificationServiceProducer.send(topic, String.valueOf(userId), getNotificationResponse(userId, Constants.FAILED));
+                            throw new Exception("Transaction FAILED!!!");
+                        }
                         if (checkBalance(accounts.getBalance(), transactionRequest.getAmount())) {
                             accounts.setBalance(accounts.getBalance() - transactionRequest.getAmount());
                         } else {
-                            //notificationServiceProducer.send(topic, "key", getNotificationResponse(userId, Constants.FAILED));
-                            //throw new Exception("Withdrawal not possible with this amount!!");
+                            notificationServiceProducer.send(topic, "key", getNotificationResponse(userId, Constants.FAILED));
+                            throw new Exception("Withdrawal not possible with this amount!!");
                         }
-                       // notificationServiceProducer.send(topic, "key", getNotificationResponse(userId, Constants.SUCCESSFUL));
+                       notificationServiceProducer.send(topic, "key", getNotificationResponse(userId, Constants.SUCCESSFUL));
                         saveTransaction(userId, transactionRequest);
                         accountsRepository.save(accounts);
                     }
@@ -192,6 +193,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     private void saveTransaction(Long userId, TransactionRequest transactionRequest) {
         Transactions transactions = new Transactions();
+
+        transactions.setId(1256698L);
         transactions.setType(transactionRequest.getTransactionType());
         transactions.setStatus(Constants.SUCCESSFUL);
         transactions.setTimestamp(LocalDateTime.now());
@@ -204,7 +207,9 @@ public class TransactionServiceImpl implements TransactionService {
     private NotificationResponse getNotificationResponse(Long userId, String status) {
         NotificationResponse notificationResponse = new NotificationResponse();
         notificationResponse.setUser_id(userId);
+        notificationResponse.setEmail("mondaldebanjali6@gmail.com");
         notificationResponse.setStatus(status);
+        notificationResponse.setMessage("Your transaction was successful.");
         return notificationResponse;
     }
 
@@ -212,7 +217,7 @@ public class TransactionServiceImpl implements TransactionService {
         if (transactionRequest.getTransactionId() == null || transactionRequest.getTransactionId().isBlank()) {
             transactionRequest.setTransactionId(UUID.randomUUID().toString());
         }
-        String fraudApiUrl = "http://localhost:8082/api/fraud/check";
+        String fraudApiUrl = "http://localhost:7070/api/fraud/check";
 
         try {
             ResponseEntity<FraudResponse> fraudResponse = restTemplate.postForEntity(
